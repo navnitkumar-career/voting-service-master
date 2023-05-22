@@ -1,0 +1,60 @@
+version: "3"
+
+services:
+  service:
+    build: .
+    container_name: voting-service-app
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    networks:
+      - votingnet
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysqldb/bootdb?createDatabaseIfNotExist=true&autoReconnect=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - SPRING_RABBITMQ_HOST=myrabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=root
+      - SPRING_RABBITMQ_PASSWORD=root
+      - REST_USER_INFO_URL=https://user-info.herokuapp.com
+      - EXCHANGE_VOTING_RESULT_NAME=VotingResultsExchange
+      - QUEUE_VOTING_RESULT_NAME=VotingResultsQueue
+    depends_on:
+      - mysqldb
+      - myrabbitmq
+
+  mysqldb:
+    image: mysql
+    container_name: voting-service-mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    networks:
+      - votingnet
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=bootdb
+    healthcheck:
+      test: "/usr/bin/mysql --user=root --password=root --execute \"SHOW DATABASES;\""
+      interval: 5s
+      timeout: 20s
+      retries: 10
+
+  myrabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: voting-service-rabbitmq
+    hostname: myrabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - votingnet
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=root
+
+networks:
+  votingnet:
+    driver: bridge
